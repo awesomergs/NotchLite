@@ -18,10 +18,8 @@ struct NotchView: View {
                 .fill(.black)
 
             if state.isExpanded {
-                Text("expanded content goes here")
-                    .font(.callout)
-                    .foregroundStyle(.white)
-                    .padding(.top, 56)
+                ExpandedPlayerView(spotify: spotify)
+                    .padding(.top, 36)
                     .transition(.opacity)
             } else if state.musicMode != .hidden {
                 HStack(spacing: 0) {
@@ -45,8 +43,137 @@ struct NotchView: View {
     }
 }
 
+// MARK: - Expanded player
+
+struct ExpandedPlayerView: View {
+    @ObservedObject var spotify: SpotifyManager
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 10) {
+                AlbumArtThumbnail(image: spotify.artwork, size: 38)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(spotify.trackTitle.isEmpty ? "Not Playing" : spotify.trackTitle)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                    Text(spotify.artist)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.white.opacity(0.55))
+                        .lineLimit(1)
+                }
+                Spacer()
+            }
+            .padding(.horizontal, 14)
+            .padding(.bottom, 6)
+
+            TrackProgressBar(
+                position: spotify.playerPosition,
+                duration: spotify.trackDuration,
+                onSeek: { spotify.seek(to: $0) }
+            )
+            .padding(.horizontal, 14)
+            .padding(.bottom, 1)
+
+            PlayerControlsView(spotify: spotify)
+        }
+    }
+}
+
+struct TrackProgressBar: View {
+    let position: Double
+    let duration: Double
+    let onSeek: (Double) -> Void
+
+    @State private var isDragging = false
+    @State private var dragFraction: Double = 0
+
+    private var progress: Double {
+        isDragging ? dragFraction : (duration > 0 ? min(position / duration, 1) : 0)
+    }
+
+    private func format(_ t: Double) -> String {
+        let s = Int(max(0, t))
+        return String(format: "%d:%02d", s / 60, s % 60)
+    }
+
+    var body: some View {
+        VStack(spacing: 3) {
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(.white.opacity(0.15))
+                        .frame(height: 3)
+                    Capsule()
+                        .fill(.white.opacity(isDragging ? 1.0 : 0.75))
+                        .frame(width: max(0, geo.size.width * progress), height: 3)
+                        .animation(isDragging ? nil : .linear(duration: 1.0), value: progress)
+                }
+                .frame(maxHeight: .infinity)
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { v in
+                            isDragging = true
+                            dragFraction = max(0, min(1, v.location.x / geo.size.width))
+                        }
+                        .onEnded { v in
+                            let f = max(0, min(1, v.location.x / geo.size.width))
+                            onSeek(f * duration)
+                            isDragging = false
+                        }
+                )
+            }
+            .frame(height: 8)
+
+            HStack {
+                Text(format(isDragging ? dragFraction * duration : position))
+                Spacer()
+                Text(format(duration))
+            }
+            .font(.system(size: 9, weight: .medium).monospacedDigit())
+            .foregroundStyle(.white.opacity(isDragging ? 0.6 : 0.35))
+        }
+    }
+}
+
+struct PlayerControlsView: View {
+    @ObservedObject var spotify: SpotifyManager
+
+    var body: some View {
+        HStack {
+            Spacer()
+            controlButton(icon: "shuffle", active: spotify.isShuffling) { spotify.toggleShuffle() }
+            Spacer()
+            controlButton(icon: "backward.end.fill") { spotify.previousTrack() }
+            Spacer()
+            controlButton(icon: spotify.isPlaying ? "pause.fill" : "play.fill", size: 20) { spotify.playPause() }
+            Spacer()
+            controlButton(icon: "forward.end.fill") { spotify.nextTrack() }
+            Spacer()
+            controlButton(icon: "repeat", active: spotify.isRepeating) { spotify.toggleRepeat() }
+            Spacer()
+        }
+    }
+
+    @ViewBuilder
+    private func controlButton(icon: String, active: Bool = true, size: CGFloat = 15, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: size, weight: .medium))
+                .foregroundStyle(active ? .white : .white.opacity(0.35))
+                .frame(width: 32, height: 26)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Shared subviews
+
 struct AlbumArtThumbnail: View {
     let image: NSImage?
+    var size: CGFloat = 20
 
     var body: some View {
         Group {
@@ -60,12 +187,12 @@ struct AlbumArtThumbnail: View {
                     .overlay(
                         Image(systemName: "music.note")
                             .foregroundStyle(.white.opacity(0.4))
-                            .font(.system(size: 11))
+                            .font(.system(size: size * 0.45))
                     )
             }
         }
-        .frame(width: 20, height: 20)
-        .clipShape(RoundedRectangle(cornerRadius: 3))
+        .frame(width: size, height: size)
+        .clipShape(RoundedRectangle(cornerRadius: size * 0.14))
     }
 }
 

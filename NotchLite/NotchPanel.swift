@@ -15,7 +15,7 @@ class NotchPanel: NSPanel {
 
     private static let collapsedSize = CGSize(width: 200, height: 32)
     private static let musicSize     = CGSize(width: 310, height: 32)
-    private static let expandedSize  = CGSize(width: 380, height: 180)
+    private static let expandedSize  = CGSize(width: 380, height: 135)
 
     init(state: NotchState, spotify: SpotifyManager) {
         let screen = NSScreen.screens.first { $0.safeAreaInsets.top > 0 } ?? NSScreen.main!

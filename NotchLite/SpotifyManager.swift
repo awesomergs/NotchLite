@@ -67,7 +67,16 @@ class SpotifyManager: ObservableObject {
 
     private func handle(_ raw: String) {
         guard !raw.isEmpty else {
-            print("[Spotify] not running")
+            DispatchQueue.main.async { [weak self] in
+                guard let self, !self.trackTitle.isEmpty else { return }
+                self.trackTitle  = ""
+                self.artist      = ""
+                self.artwork     = nil
+                self.isPlaying   = false
+                self.isShuffling = false
+                self.isRepeating = false
+                self.lastArtworkURL = ""
+            }
             return
         }
         let p = raw.components(separatedBy: "|")

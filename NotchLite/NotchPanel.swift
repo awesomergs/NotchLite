@@ -14,9 +14,10 @@ class NotchPanel: NSPanel {
     private let screenFrame: NSRect
 
     private static let collapsedSize = CGSize(width: 200, height: 32)
+    private static let musicSize     = CGSize(width: 310, height: 32)
     private static let expandedSize  = CGSize(width: 380, height: 180)
 
-    init(state: NotchState) {
+    init(state: NotchState, spotify: SpotifyManager) {
         let screen = NSScreen.screens.first { $0.safeAreaInsets.top > 0 } ?? NSScreen.main!
         screenFrame = screen.frame
 
@@ -36,15 +37,14 @@ class NotchPanel: NSPanel {
         self.isMovable = false
         self.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary]
 
-        let hosting = NSHostingView(rootView: NotchView(state: state))
+        let hosting = NSHostingView(rootView: NotchView(state: state, spotify: spotify))
         hosting.autoresizingMask = [.width, .height]   // grow with the window
         self.contentView = hosting
 
-        // When the view flips isExpanded, resize the window to match.
         state.$isExpanded
-            .removeDuplicates()
-            .sink { [weak self] expanded in
-                self?.resize(expanded: expanded)
+            .combineLatest(state.$musicMode)
+            .sink { [weak self] expanded, musicMode in
+                self?.resize(expanded: expanded, musicMode: musicMode)
             }
             .store(in: &cancellables)
     }
@@ -58,8 +58,15 @@ class NotchPanel: NSPanel {
         )
     }
 
-    private func resize(expanded: Bool) {
-        let size = expanded ? NotchPanel.expandedSize : NotchPanel.collapsedSize
+    private func resize(expanded: Bool, musicMode: MusicDisplayMode) {
+        let size: CGSize
+        if expanded {
+            size = NotchPanel.expandedSize
+        } else if musicMode != .hidden {
+            size = NotchPanel.musicSize
+        } else {
+            size = NotchPanel.collapsedSize
+        }
         let target = NotchPanel.frame(for: size, in: screenFrame)
         NSAnimationContext.runAnimationGroup { ctx in
             ctx.duration = 0.28

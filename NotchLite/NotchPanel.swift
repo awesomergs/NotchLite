@@ -13,7 +13,7 @@ class NotchPanel: NSPanel {
     private var cancellables = Set<AnyCancellable>()
     private let screenFrame: NSRect
 
-    private static let collapsedSize = CGSize(width: 200, height: 36)
+    private static let collapsedSize = CGSize(width: 200, height: 32)
     private static let expandedSize  = CGSize(width: 380, height: 180)
 
     init(state: NotchState) {
@@ -49,7 +49,6 @@ class NotchPanel: NSPanel {
             .store(in: &cancellables)
     }
 
-    // Anchor any size to the top-center of the screen.
     private static func frame(for size: CGSize, in screen: NSRect) -> NSRect {
         NSRect(
             x: screen.midX - size.width / 2,

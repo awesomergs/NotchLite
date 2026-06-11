@@ -27,9 +27,7 @@ struct NotchView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .contentShape(Rectangle())               // make the whole area hoverable
         .onHover { hovering in
-            withAnimation(.easeOut(duration: 0.2)) {
-                state.isExpanded = hovering
-            }
+            state.setHovering(hovering)
         }
     }
 }

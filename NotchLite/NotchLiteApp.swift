@@ -9,9 +9,9 @@ import SwiftUI
 
 @main
 struct NotchLiteApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+
     var body: some Scene {
-        WindowGroup {
-            ContentView()
-        }
+        Settings { EmptyView() }   // satisfies the "needs a Scene" rule, opens no window
     }
 }

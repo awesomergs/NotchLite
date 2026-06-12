@@ -13,8 +13,10 @@ struct CalendarEvent: Identifiable {
     let id: String
     let title: String
     let startDate: Date
+    let endDate: Date
     let isAllDay: Bool
     let calendarColor: Color
+    let meetingURL: URL?
 }
 
 class CalendarManager: ObservableObject {
@@ -85,7 +87,31 @@ private extension CalendarEvent {
         id = eid ?? UUID().uuidString
         title = ekEvent.title ?? "Untitled"
         startDate = ekEvent.startDate
+        endDate = ekEvent.endDate ?? ekEvent.startDate
         isAllDay = ekEvent.isAllDay
         calendarColor = Color(cgColor: ekEvent.calendar.cgColor)
+        meetingURL = CalendarEvent.extractMeetingURL(from: ekEvent)
+    }
+
+    static func extractMeetingURL(from event: EKEvent) -> URL? {
+        if let url = event.url, isMeetingURL(url) { return url }
+        guard let notes = event.notes else { return nil }
+        let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
+        let range = NSRange(notes.startIndex..., in: notes)
+        let matches = detector?.matches(in: notes, range: range) ?? []
+        return matches.compactMap(\.url).first(where: isMeetingURL)
+    }
+
+    private static func isMeetingURL(_ url: URL) -> Bool {
+        let host = url.host?.lowercased() ?? ""
+        return host.contains("zoom.us") ||
+               host.contains("meet.google.com") ||
+               host.contains("teams.microsoft.com") ||
+               host.contains("teams.live.com") ||
+               host.contains("webex.com") ||
+               host.contains("gotomeeting.com") ||
+               host.contains("whereby.com") ||
+               host.contains("bluejeans.com") ||
+               host.contains("chime.aws")
     }
 }

@@ -31,7 +31,7 @@ class ClaudeCodeManager: ObservableObject {
     // (terminal killed before the Stop hook could fire); PostToolUse acts
     // as a heartbeat keeping live tasks fresher than this.
     private static let runningStaleInterval: TimeInterval = 10 * 60
-    private static let doneDisplayInterval:  TimeInterval = 15
+    private static let doneDisplayInterval:  TimeInterval = 30
 
     init() {
         pollTimer = Timer.publish(every: 0.5, on: .main, in: .common)

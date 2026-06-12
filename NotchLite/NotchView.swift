@@ -159,6 +159,13 @@ struct CalendarSection: View {
     @ObservedObject var calendar: CalendarManager
 
     var body: some View {
+        TimelineView(.periodic(from: .now, by: 15)) { context in
+            calendarContent(now: context.date)
+        }
+    }
+
+    @ViewBuilder
+    private func calendarContent(now: Date) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             if calendar.events.isEmpty {
                 Text("No events today")
@@ -173,7 +180,7 @@ struct CalendarSection: View {
 
                 VStack(alignment: .leading, spacing: 4) {
                     ForEach(calendar.events.prefix(5)) { event in
-                        EventRow(event: event)
+                        EventRow(event: event, now: now)
                     }
                 }
             }
@@ -183,6 +190,17 @@ struct CalendarSection: View {
 
 struct EventRow: View {
     let event: CalendarEvent
+    let now: Date
+
+    private var isActive: Bool {
+        !event.isAllDay && event.startDate <= now && now < event.endDate
+    }
+
+    private var isImminent: Bool {
+        !event.isAllDay && now < event.startDate && event.startDate.timeIntervalSince(now) <= 300
+    }
+
+    private var isHighlighted: Bool { isActive || isImminent }
 
     private static let timeFormatter: DateFormatter = {
         let f = DateFormatter()
@@ -193,17 +211,58 @@ struct EventRow: View {
     var body: some View {
         HStack(spacing: 5) {
             Circle()
-                .fill(event.calendarColor)
+                .fill(isHighlighted ? Color.green : event.calendarColor)
                 .frame(width: 5, height: 5)
-            Text(event.isAllDay ? "All day" : Self.timeFormatter.string(from: event.startDate))
-                .font(.system(size: 9, weight: .medium).monospacedDigit())
-                .foregroundStyle(.white.opacity(0.45))
+            Text(event.isAllDay ? "All day" : isActive ? "now" : Self.timeFormatter.string(from: event.startDate))
+                .font(.system(size: 9, weight: isActive ? .bold : .medium).monospacedDigit())
+                .foregroundStyle(isActive ? Color.green : .white.opacity(0.45))
                 .fixedSize()
             Text(event.title)
-                .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(.white.opacity(0.85))
+                .font(.system(size: 10, weight: isHighlighted ? .semibold : .medium))
+                .foregroundStyle(isHighlighted ? .white : .white.opacity(0.85))
                 .lineLimit(1)
+            if let url = event.meetingURL {
+                Spacer()
+                JoinButton(url: url, isActive: isActive)
+            }
         }
+        .padding(.horizontal, isHighlighted ? 6 : 0)
+        .padding(.vertical, isHighlighted ? 3 : 0)
+        .background {
+            if isHighlighted {
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(Color.green.opacity(0.15))
+            }
+        }
+    }
+}
+
+struct JoinButton: View {
+    let url: URL
+    let isActive: Bool
+
+    var body: some View {
+        Button {
+            NSWorkspace.shared.open(url)
+        } label: {
+            HStack(spacing: 3) {
+                Image(systemName: "video.fill")
+                    .font(.system(size: 7))
+                Text("Join")
+                    .font(.system(size: 9, weight: .semibold))
+            }
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
+            .foregroundStyle(isActive ? Color.black : .white.opacity(0.85))
+            .background {
+                if isActive {
+                    Capsule().fill(Color.green)
+                } else {
+                    Capsule().strokeBorder(.white.opacity(0.45), lineWidth: 0.5)
+                }
+            }
+        }
+        .buttonStyle(.plain)
     }
 }
 

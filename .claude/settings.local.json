@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c \"open\\('/Users/rohangeorge/Documents/SummerProjects/NotchLite/NotchLite/CalendarManager.swift'\\)\")",
+      "Bash(python3 -c \"open\\('/Users/rohangeorge/Documents/SummerProjects/NotchLite/NotchLite/AppDelegate.swift'\\)\")"
+    ]
+  }
+}

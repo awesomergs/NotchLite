@@ -57,21 +57,21 @@ struct SplitExpandedView: View {
     @ObservedObject var calendar: CalendarManager
 
     var body: some View {
-        HStack(spacing: 0) {
+        HStack(alignment: .top, spacing: 0) {
             CompactSpotifySection(spotify: spotify)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .frame(maxWidth: .infinity)
                 .padding(.horizontal, 12)
 
             Rectangle()
                 .fill(.white.opacity(0.1))
                 .frame(width: 1)
-                .padding(.vertical, 8)
+                .padding(.vertical, 6)
 
             CalendarSection(calendar: calendar)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .frame(maxWidth: .infinity, alignment: .topLeading)
                 .padding(.horizontal, 12)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 }
 
@@ -91,7 +91,7 @@ struct CompactSpotifySection: View {
     @ObservedObject var spotify: SpotifyManager
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 5) {
             HStack(spacing: 8) {
                 AlbumArtThumbnail(image: spotify.artwork, size: 34)
                 VStack(alignment: .leading, spacing: 2) {
@@ -106,6 +106,12 @@ struct CompactSpotifySection: View {
                 }
                 Spacer()
             }
+
+            TrackProgressBar(
+                position: spotify.playerPosition,
+                duration: spotify.trackDuration,
+                onSeek: { spotify.seek(to: $0) }
+            )
 
             HStack(spacing: 0) {
                 Spacer()
@@ -186,40 +192,55 @@ struct EventRow: View {
     }
 }
 
-// MARK: - Full Spotify player (hover-expanded when split)
+// MARK: - Shared subviews
 
-struct ExpandedPlayerView: View {
-    @ObservedObject var spotify: SpotifyManager
+struct AlbumArtThumbnail: View {
+    let image: NSImage?
+    var size: CGFloat = 20
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 10) {
-                AlbumArtThumbnail(image: spotify.artwork, size: 38)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(spotify.trackTitle.isEmpty ? "Not Playing" : spotify.trackTitle)
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .lineLimit(1)
-                    Text(spotify.artist)
-                        .font(.system(size: 11))
-                        .foregroundStyle(.white.opacity(0.55))
-                        .lineLimit(1)
-                }
-                Spacer()
+        Group {
+            if let img = image {
+                Image(nsImage: img)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+            } else {
+                Rectangle()
+                    .fill(Color.white.opacity(0.12))
+                    .overlay(
+                        Image(systemName: "music.note")
+                            .foregroundStyle(.white.opacity(0.4))
+                            .font(.system(size: size * 0.45))
+                    )
             }
-            .padding(.horizontal, 14)
-            .padding(.bottom, 6)
-
-            TrackProgressBar(
-                position: spotify.playerPosition,
-                duration: spotify.trackDuration,
-                onSeek: { spotify.seek(to: $0) }
-            )
-            .padding(.horizontal, 14)
-            .padding(.bottom, 1)
-
-            PlayerControlsView(spotify: spotify)
         }
+        .frame(width: size, height: size)
+        .clipShape(RoundedRectangle(cornerRadius: size * 0.14))
+    }
+}
+
+struct AudioBarsView: View {
+    let isPlaying: Bool
+
+    private let freqs:  [Double] = [4.1, 5.8, 3.6, 6.4]
+    private let phases: [Double] = [0.0, 1.1, 2.3, 0.7]
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 30, paused: !isPlaying)) { ctx in
+            let t = ctx.date.timeIntervalSinceReferenceDate
+            HStack(alignment: .center, spacing: 1.5) {
+                ForEach(0..<4, id: \.self) { i in
+                    let h: CGFloat = isPlaying
+                        ? 3 + 12 * CGFloat((sin(t * freqs[i] + phases[i]) + 1) / 2)
+                        : 4
+                    RoundedRectangle(cornerRadius: 1)
+                        .fill(Color(red: 0.18, green: 0.84, blue: 0.38))
+                        .frame(width: 2.5, height: h)
+                        .animation(.easeOut(duration: 0.35), value: isPlaying)
+                }
+            }
+        }
+        .frame(width: 16, height: 20)
     }
 }
 
@@ -309,57 +330,5 @@ struct PlayerControlsView: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-    }
-}
-
-// MARK: - Shared subviews
-
-struct AlbumArtThumbnail: View {
-    let image: NSImage?
-    var size: CGFloat = 20
-
-    var body: some View {
-        Group {
-            if let img = image {
-                Image(nsImage: img)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-            } else {
-                Rectangle()
-                    .fill(Color.white.opacity(0.12))
-                    .overlay(
-                        Image(systemName: "music.note")
-                            .foregroundStyle(.white.opacity(0.4))
-                            .font(.system(size: size * 0.45))
-                    )
-            }
-        }
-        .frame(width: size, height: size)
-        .clipShape(RoundedRectangle(cornerRadius: size * 0.14))
-    }
-}
-
-struct AudioBarsView: View {
-    let isPlaying: Bool
-
-    private let freqs:  [Double] = [4.1, 5.8, 3.6, 6.4]
-    private let phases: [Double] = [0.0, 1.1, 2.3, 0.7]
-
-    var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30, paused: !isPlaying)) { ctx in
-            let t = ctx.date.timeIntervalSinceReferenceDate
-            HStack(alignment: .center, spacing: 1.5) {
-                ForEach(0..<4, id: \.self) { i in
-                    let h: CGFloat = isPlaying
-                        ? 3 + 12 * CGFloat((sin(t * freqs[i] + phases[i]) + 1) / 2)
-                        : 4
-                    RoundedRectangle(cornerRadius: 1)
-                        .fill(Color(red: 0.18, green: 0.84, blue: 0.38))
-                        .frame(width: 2.5, height: h)
-                        .animation(.easeOut(duration: 0.35), value: isPlaying)
-                }
-            }
-        }
-        .frame(width: 16, height: 20)
     }
 }

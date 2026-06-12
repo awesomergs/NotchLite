@@ -11,6 +11,7 @@ import Combine
 struct NotchView: View {
     @ObservedObject var state: NotchState
     @ObservedObject var spotify: SpotifyManager
+    @ObservedObject var calendar: CalendarManager
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -18,9 +19,15 @@ struct NotchView: View {
                 .fill(.black)
 
             if state.isExpanded {
-                ExpandedPlayerView(spotify: spotify)
-                    .padding(.top, 36)
-                    .transition(.opacity)
+                if state.musicMode == .playing {
+                    SplitExpandedView(spotify: spotify, calendar: calendar)
+                        .padding(.top, 36)
+                        .transition(.opacity)
+                } else {
+                    CalendarOnlyExpandedView(calendar: calendar)
+                        .padding(.top, 36)
+                        .transition(.opacity)
+                }
             } else if state.musicMode != .hidden {
                 HStack(spacing: 0) {
                     AlbumArtThumbnail(image: spotify.artwork)
@@ -43,7 +50,143 @@ struct NotchView: View {
     }
 }
 
-// MARK: - Expanded player
+// MARK: - Expanded layouts
+
+struct SplitExpandedView: View {
+    @ObservedObject var spotify: SpotifyManager
+    @ObservedObject var calendar: CalendarManager
+
+    var body: some View {
+        HStack(spacing: 0) {
+            CompactSpotifySection(spotify: spotify)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(.horizontal, 12)
+
+            Rectangle()
+                .fill(.white.opacity(0.1))
+                .frame(width: 1)
+                .padding(.vertical, 8)
+
+            CalendarSection(calendar: calendar)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .padding(.horizontal, 12)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+struct CalendarOnlyExpandedView: View {
+    @ObservedObject var calendar: CalendarManager
+
+    var body: some View {
+        CalendarSection(calendar: calendar)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .padding(.horizontal, 14)
+    }
+}
+
+// MARK: - Compact Spotify (split mode)
+
+struct CompactSpotifySection: View {
+    @ObservedObject var spotify: SpotifyManager
+
+    var body: some View {
+        VStack(spacing: 8) {
+            HStack(spacing: 8) {
+                AlbumArtThumbnail(image: spotify.artwork, size: 34)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(spotify.trackTitle.isEmpty ? "Not Playing" : spotify.trackTitle)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                    Text(spotify.artist)
+                        .font(.system(size: 10))
+                        .foregroundStyle(.white.opacity(0.55))
+                        .lineLimit(1)
+                }
+                Spacer()
+            }
+
+            HStack(spacing: 0) {
+                Spacer()
+                compactButton(icon: "backward.end.fill") { spotify.previousTrack() }
+                Spacer()
+                compactButton(icon: spotify.isPlaying ? "pause.fill" : "play.fill", size: 18) { spotify.playPause() }
+                Spacer()
+                compactButton(icon: "forward.end.fill") { spotify.nextTrack() }
+                Spacer()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func compactButton(icon: String, size: CGFloat = 13, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: size, weight: .medium))
+                .foregroundStyle(.white)
+                .frame(width: 28, height: 24)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Calendar section
+
+struct CalendarSection: View {
+    @ObservedObject var calendar: CalendarManager
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if calendar.events.isEmpty {
+                Text("No events today")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.white.opacity(0.4))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+            } else {
+                Text(calendar.showingTomorrow ? "Tomorrow" : "Today")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.4))
+                    .padding(.bottom, 5)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(calendar.events.prefix(5)) { event in
+                        EventRow(event: event)
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct EventRow: View {
+    let event: CalendarEvent
+
+    private static let timeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "h:mm a"
+        return f
+    }()
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Circle()
+                .fill(event.calendarColor)
+                .frame(width: 5, height: 5)
+            Text(event.isAllDay ? "All day" : Self.timeFormatter.string(from: event.startDate))
+                .font(.system(size: 9, weight: .medium).monospacedDigit())
+                .foregroundStyle(.white.opacity(0.45))
+                .fixedSize()
+            Text(event.title)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(.white.opacity(0.85))
+                .lineLimit(1)
+        }
+    }
+}
+
+// MARK: - Full Spotify player (hover-expanded when split)
 
 struct ExpandedPlayerView: View {
     @ObservedObject var spotify: SpotifyManager

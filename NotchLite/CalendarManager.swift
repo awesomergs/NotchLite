@@ -1,0 +1,91 @@
+//
+//  CalendarManager.swift
+//  NotchLite
+//
+//  Created by Rohan George on 6/12/26.
+//
+
+import EventKit
+import SwiftUI
+import Combine
+
+struct CalendarEvent: Identifiable {
+    let id: String
+    let title: String
+    let startDate: Date
+    let isAllDay: Bool
+    let calendarColor: Color
+}
+
+class CalendarManager: ObservableObject {
+    @Published var events: [CalendarEvent] = []
+    @Published var showingTomorrow = false
+    @Published var authorized = false
+
+    private let store = EKEventStore()
+    private var refreshTimer: AnyCancellable?
+
+    init() {
+        requestAccess()
+    }
+
+    private func requestAccess() {
+        store.requestFullAccessToEvents { [weak self] granted, _ in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                self.authorized = granted
+                if granted {
+                    self.fetchEvents()
+                    self.startRefreshTimer()
+                }
+            }
+        }
+    }
+
+    func fetchEvents() {
+        let cal = Calendar.current
+        let now = Date()
+        let tomorrow = cal.startOfDay(for: cal.date(byAdding: .day, value: 1, to: now)!)
+        let dayAfter = cal.date(byAdding: .day, value: 1, to: tomorrow)!
+
+        let todayEvents = eventsInRange(from: now, to: tomorrow)
+        if !todayEvents.isEmpty {
+            events = todayEvents
+            showingTomorrow = false
+            return
+        }
+
+        let tomorrowEvents = eventsInRange(from: tomorrow, to: dayAfter)
+        if let first = tomorrowEvents.first {
+            events = [first]
+            showingTomorrow = true
+        } else {
+            events = []
+            showingTomorrow = false
+        }
+    }
+
+    private func eventsInRange(from start: Date, to end: Date) -> [CalendarEvent] {
+        let pred = store.predicateForEvents(withStart: start, end: end, calendars: nil)
+        return store.events(matching: pred)
+            .sorted { $0.startDate < $1.startDate }
+            .map { CalendarEvent(ekEvent: $0) }
+    }
+
+    private func startRefreshTimer() {
+        refreshTimer = Timer.publish(every: 60, on: .main, in: .common)
+            .autoconnect()
+            .sink { [weak self] _ in self?.fetchEvents() }
+    }
+}
+
+private extension CalendarEvent {
+    init(ekEvent: EKEvent) {
+        let eid: String? = ekEvent.eventIdentifier
+        id = eid ?? UUID().uuidString
+        title = ekEvent.title ?? "Untitled"
+        startDate = ekEvent.startDate
+        isAllDay = ekEvent.isAllDay
+        calendarColor = Color(cgColor: ekEvent.calendar.cgColor)
+    }
+}

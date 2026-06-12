@@ -13,11 +13,12 @@ class NotchPanel: NSPanel {
     private var cancellables = Set<AnyCancellable>()
     private let screenFrame: NSRect
 
-    private static let collapsedSize = CGSize(width: 200, height: 32)
-    private static let musicSize     = CGSize(width: 310, height: 32)
-    private static let expandedSize  = CGSize(width: 380, height: 135)
+    private static let collapsedSize        = CGSize(width: 200, height: 32)
+    private static let musicSize            = CGSize(width: 310, height: 32)
+    private static let calendarExpandedSize = CGSize(width: 380, height: 145)
+    private static let splitExpandedSize    = CGSize(width: 520, height: 145)
 
-    init(state: NotchState, spotify: SpotifyManager) {
+    init(state: NotchState, spotify: SpotifyManager, calendar: CalendarManager) {
         let screen = NSScreen.screens.first { $0.safeAreaInsets.top > 0 } ?? NSScreen.main!
         screenFrame = screen.frame
 
@@ -37,7 +38,7 @@ class NotchPanel: NSPanel {
         self.isMovable = false
         self.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary]
 
-        let hosting = NSHostingView(rootView: NotchView(state: state, spotify: spotify))
+        let hosting = NSHostingView(rootView: NotchView(state: state, spotify: spotify, calendar: calendar))
         hosting.autoresizingMask = [.width, .height]   // grow with the window
         self.contentView = hosting
 
@@ -61,7 +62,7 @@ class NotchPanel: NSPanel {
     private func resize(expanded: Bool, musicMode: MusicDisplayMode) {
         let size: CGSize
         if expanded {
-            size = NotchPanel.expandedSize
+            size = musicMode == .playing ? NotchPanel.splitExpandedSize : NotchPanel.calendarExpandedSize
         } else if musicMode != .hidden {
             size = NotchPanel.musicSize
         } else {

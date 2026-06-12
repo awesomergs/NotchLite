@@ -256,6 +256,7 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSAppleEventsUsageDescription = "NotchLite reads Spotify now-playing info to display it in the notch.";
+				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "NotchLite displays your upcoming calendar events in the notch.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -287,6 +288,7 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSAppleEventsUsageDescription = "NotchLite reads Spotify now-playing info to display it in the notch.";
+				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "NotchLite displays your upcoming calendar events in the notch.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

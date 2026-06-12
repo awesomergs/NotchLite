@@ -34,8 +34,23 @@ struct NotchView: View {
                         .padding(.leading, 14)
                         .transition(.opacity.combined(with: .scale(scale: 0.8, anchor: .leading)))
                     Spacer()
-                    AudioBarsView(isPlaying: state.musicMode == .playing)
-                        .padding(.trailing, 8)
+                    if state.claudeMode != .inactive {
+                        ClaudeIndicatorView(activity: state.claudeMode)
+                            .padding(.trailing, 12)
+                            .transition(.opacity.combined(with: .scale(scale: 0.8, anchor: .trailing)))
+                    } else {
+                        AudioBarsView(isPlaying: state.musicMode == .playing)
+                            .padding(.trailing, 8)
+                            .transition(.opacity.combined(with: .scale(scale: 0.8, anchor: .trailing)))
+                    }
+                }
+                .frame(maxHeight: .infinity)
+                .transition(.opacity)
+            } else if state.claudeMode != .inactive {
+                HStack(spacing: 0) {
+                    Spacer()
+                    ClaudeIndicatorView(activity: state.claudeMode)
+                        .padding(.trailing, 12)
                         .transition(.opacity.combined(with: .scale(scale: 0.8, anchor: .trailing)))
                 }
                 .frame(maxHeight: .infinity)

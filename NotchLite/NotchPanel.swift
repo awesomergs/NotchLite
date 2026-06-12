@@ -17,6 +17,7 @@ class NotchPanel: NSPanel {
     private static let musicSize            = CGSize(width: 310, height: 32)
     private static let calendarExpandedSize = CGSize(width: 380, height: 145)
     private static let splitExpandedSize    = CGSize(width: 520, height: 145)
+    private static let claudeExtraWidth: CGFloat = 44   // rightward extension for the Claude indicator
 
     init(state: NotchState, spotify: SpotifyManager, calendar: CalendarManager) {
         let screen = NSScreen.screens.first { $0.safeAreaInsets.top > 0 } ?? NSScreen.main!
@@ -37,29 +38,32 @@ class NotchPanel: NSPanel {
         self.hasShadow = false
         self.isMovable = false
         self.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary]
+//        self.sharingType = .readOnly   // TEMP: allow screenshot verification
 
         let hosting = NSHostingView(rootView: NotchView(state: state, spotify: spotify, calendar: calendar))
         hosting.autoresizingMask = [.width, .height]   // grow with the window
         self.contentView = hosting
 
         state.$isExpanded
-            .combineLatest(state.$musicMode)
-            .sink { [weak self] expanded, musicMode in
-                self?.resize(expanded: expanded, musicMode: musicMode)
+            .combineLatest(state.$musicMode, state.$claudeMode)
+            .sink { [weak self] expanded, musicMode, claudeMode in
+                self?.resize(expanded: expanded, musicMode: musicMode, claudeMode: claudeMode)
             }
             .store(in: &cancellables)
     }
 
-    private static func frame(for size: CGSize, in screen: NSRect) -> NSRect {
+    // x depends only on the base width, so the base notch stays centered in
+    // place and any extra width grows purely off the right edge
+    private static func frame(for size: CGSize, extraRight: CGFloat = 0, in screen: NSRect) -> NSRect {
         NSRect(
             x: screen.midX - size.width / 2,
             y: screen.maxY - size.height,
-            width: size.width,
+            width: size.width + extraRight,
             height: size.height
         )
     }
 
-    private func resize(expanded: Bool, musicMode: MusicDisplayMode) {
+    private func resize(expanded: Bool, musicMode: MusicDisplayMode, claudeMode: ClaudeActivity) {
         let size: CGSize
         if expanded {
             size = musicMode == .playing ? NotchPanel.splitExpandedSize : NotchPanel.calendarExpandedSize
@@ -68,7 +72,8 @@ class NotchPanel: NSPanel {
         } else {
             size = NotchPanel.collapsedSize
         }
-        let target = NotchPanel.frame(for: size, in: screenFrame)
+        let extraRight = (!expanded && claudeMode != .inactive) ? NotchPanel.claudeExtraWidth : 0
+        let target = NotchPanel.frame(for: size, extraRight: extraRight, in: screenFrame)
         NSAnimationContext.runAnimationGroup { ctx in
             ctx.duration = 0.28
             ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)

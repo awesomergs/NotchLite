@@ -13,17 +13,26 @@ enum MusicDisplayMode { case hidden, playing, paused }
 class NotchState: ObservableObject {
     @Published var isExpanded = false
     @Published var musicMode: MusicDisplayMode = .hidden
+    @Published var claudeMode: ClaudeActivity = .inactive
 
     private var collapseTask: Task<Void, Never>?
     private var pauseCollapseTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
 
-    init(spotify: SpotifyManager) {
+    init(spotify: SpotifyManager, claude: ClaudeCodeManager) {
         spotify.$isPlaying
             .combineLatest(spotify.$trackTitle)
             .receive(on: DispatchQueue.main)
             .sink { [weak self] isPlaying, title in
                 self?.handlePlayback(isPlaying: isPlaying, hasTrack: !title.isEmpty)
+            }
+            .store(in: &cancellables)
+
+        claude.$activity
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] activity in
+                guard let self, self.claudeMode != activity else { return }
+                withAnimation(.easeOut(duration: 0.3)) { self.claudeMode = activity }
             }
             .store(in: &cancellables)
     }

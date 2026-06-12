@@ -12,6 +12,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var panel: NotchPanel?
     var spotifyManager: SpotifyManager?
     var calendarManager: CalendarManager?
+    var claudeManager: ClaudeCodeManager?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)   // removes dock icon !!!
@@ -19,7 +20,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         spotifyManager = spotify
         let calendar = CalendarManager()
         calendarManager = calendar
-        let notchState = NotchState(spotify: spotify)
+        let claude = ClaudeCodeManager()
+        claudeManager = claude
+        let notchState = NotchState(spotify: spotify, claude: claude)
         panel = NotchPanel(state: notchState, spotify: spotify, calendar: calendar)
         panel?.orderFrontRegardless()            // show without stealing focus
     }

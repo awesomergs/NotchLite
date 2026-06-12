@@ -14,12 +14,15 @@ class NotchState: ObservableObject {
     @Published var isExpanded = false
     @Published var musicMode: MusicDisplayMode = .hidden
     @Published var claudeMode: ClaudeActivity = .inactive
+    @Published var capsLockOn: Bool = false
+    @Published var capsLockVisible: Bool = false
 
     private var collapseTask: Task<Void, Never>?
     private var pauseCollapseTask: Task<Void, Never>?
+    private var capsLockHideTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
 
-    init(spotify: SpotifyManager, claude: ClaudeCodeManager) {
+    init(spotify: SpotifyManager, claude: ClaudeCodeManager, capsLock: CapsLockManager) {
         spotify.$isPlaying
             .combineLatest(spotify.$trackTitle)
             .receive(on: DispatchQueue.main)
@@ -35,6 +38,26 @@ class NotchState: ObservableObject {
                 withAnimation(.easeOut(duration: 0.3)) { self.claudeMode = activity }
             }
             .store(in: &cancellables)
+
+        capsLock.$capsLockOn
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] on in
+                guard let self, self.capsLockOn != on else { return }
+                self.capsLockOn = on
+                self.showCapsLockBriefly()
+            }
+            .store(in: &cancellables)
+    }
+
+    private func showCapsLockBriefly() {
+        capsLockHideTask?.cancel()
+        withAnimation(.easeOut(duration: 0.2)) { capsLockVisible = true }
+        capsLockHideTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeOut(duration: 0.3)) { self.capsLockVisible = false }
+            self.capsLockHideTask = nil
+        }
     }
 
     private func handlePlayback(isPlaying: Bool, hasTrack: Bool) {

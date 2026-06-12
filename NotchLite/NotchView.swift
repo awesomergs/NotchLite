@@ -30,28 +30,46 @@ struct NotchView: View {
                 }
             } else if state.musicMode != .hidden {
                 HStack(spacing: 0) {
-                    AlbumArtThumbnail(image: spotify.artwork)
-                        .padding(.leading, 14)
-                        .transition(.opacity.combined(with: .scale(scale: 0.8, anchor: .leading)))
-                    Spacer()
-                    if state.claudeMode != .inactive {
+                    if state.capsLockVisible {
+                        CapsLockIndicatorView(isOn: state.capsLockOn)
+                            .padding(.leading, 15)
+                            .transition(.opacity.combined(with: .scale(scale: 0.8, anchor: .leading)))
+                    } else if state.claudeMode != .inactive {
                         ClaudeIndicatorView(activity: state.claudeMode)
-                            .padding(.trailing, 12)
-                            .transition(.opacity.combined(with: .scale(scale: 0.8, anchor: .trailing)))
+                            .padding(.leading, 15)
+                            .transition(.opacity.combined(with: .scale(scale: 0.8, anchor: .leading)))
                     } else {
-                        AudioBarsView(isPlaying: state.musicMode == .playing)
-                            .padding(.trailing, 8)
-                            .transition(.opacity.combined(with: .scale(scale: 0.8, anchor: .trailing)))
+                        AlbumArtThumbnail(image: spotify.artwork)
+                            .padding(.leading, 14)
+                            .transition(.opacity.combined(with: .scale(scale: 0.8, anchor: .leading)))
                     }
+                    Spacer()
+                    AudioBarsView(isPlaying: state.musicMode == .playing)
+                        .padding(.trailing, 8)
+                        .transition(.opacity.combined(with: .scale(scale: 0.8, anchor: .trailing)))
                 }
                 .frame(maxHeight: .infinity)
                 .transition(.opacity)
             } else if state.claudeMode != .inactive {
                 HStack(spacing: 0) {
+                    if state.capsLockVisible {
+                        CapsLockIndicatorView(isOn: state.capsLockOn)
+                            .padding(.leading, 10)
+                            .transition(.opacity.combined(with: .scale(scale: 0.8, anchor: .leading)))
+                    }
                     Spacer()
                     ClaudeIndicatorView(activity: state.claudeMode)
                         .padding(.trailing, 12)
                         .transition(.opacity.combined(with: .scale(scale: 0.8, anchor: .trailing)))
+                }
+                .frame(maxHeight: .infinity)
+                .transition(.opacity)
+            } else if state.capsLockVisible {
+                HStack(spacing: 0) {
+                    CapsLockIndicatorView(isOn: state.capsLockOn)
+                        .padding(.leading, 10)
+                        .transition(.opacity.combined(with: .scale(scale: 0.8, anchor: .leading)))
+                    Spacer()
                 }
                 .frame(maxHeight: .infinity)
                 .transition(.opacity)
@@ -372,6 +390,18 @@ struct TrackProgressBar: View {
             .font(.system(size: 9, weight: .medium).monospacedDigit())
             .foregroundStyle(.white.opacity(isDragging ? 0.6 : 0.35))
         }
+    }
+}
+
+struct CapsLockIndicatorView: View {
+    let isOn: Bool
+
+    var body: some View {
+        Image(systemName: isOn ? "capslock.fill" : "capslock")
+            .font(.system(size: 13, weight: .medium))
+            .foregroundStyle(isOn ? .white : .white.opacity(0.35))
+            .frame(width: 16, height: 16)
+            .animation(.easeOut(duration: 0.2), value: isOn)
     }
 }
 

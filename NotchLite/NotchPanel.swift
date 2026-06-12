@@ -18,6 +18,7 @@ class NotchPanel: NSPanel {
     private static let calendarExpandedSize = CGSize(width: 380, height: 145)
     private static let splitExpandedSize    = CGSize(width: 520, height: 145)
     private static let claudeExtraWidth: CGFloat = 44   // rightward extension for the Claude indicator
+    private static let capsLockExtraLeft: CGFloat = 40  // leftward extension for the CapsLock indicator
 
     init(state: NotchState, spotify: SpotifyManager, calendar: CalendarManager) {
         let screen = NSScreen.screens.first { $0.safeAreaInsets.top > 0 } ?? NSScreen.main!
@@ -46,24 +47,26 @@ class NotchPanel: NSPanel {
 
         state.$isExpanded
             .combineLatest(state.$musicMode, state.$claudeMode)
-            .sink { [weak self] expanded, musicMode, claudeMode in
-                self?.resize(expanded: expanded, musicMode: musicMode, claudeMode: claudeMode)
+            .combineLatest(state.$capsLockVisible)
+            .sink { [weak self] args, capsLockVisible in
+                let (expanded, musicMode, claudeMode) = args
+                self?.resize(expanded: expanded, musicMode: musicMode, claudeMode: claudeMode, capsLockVisible: capsLockVisible)
             }
             .store(in: &cancellables)
     }
 
-    // x depends only on the base width, so the base notch stays centered in
-    // place and any extra width grows purely off the right edge
-    private static func frame(for size: CGSize, extraRight: CGFloat = 0, in screen: NSRect) -> NSRect {
+    // x shifts left by extraLeft so the base notch stays centered; extra width
+    // grows off the left edge (extraLeft) or right edge (extraRight)
+    private static func frame(for size: CGSize, extraRight: CGFloat = 0, extraLeft: CGFloat = 0, in screen: NSRect) -> NSRect {
         NSRect(
-            x: screen.midX - size.width / 2,
+            x: screen.midX - size.width / 2 - extraLeft,
             y: screen.maxY - size.height,
-            width: size.width + extraRight,
+            width: size.width + extraRight + extraLeft,
             height: size.height
         )
     }
 
-    private func resize(expanded: Bool, musicMode: MusicDisplayMode, claudeMode: ClaudeActivity) {
+    private func resize(expanded: Bool, musicMode: MusicDisplayMode, claudeMode: ClaudeActivity, capsLockVisible: Bool) {
         let size: CGSize
         if expanded {
             size = musicMode == .playing ? NotchPanel.splitExpandedSize : NotchPanel.calendarExpandedSize
@@ -73,7 +76,9 @@ class NotchPanel: NSPanel {
             size = NotchPanel.collapsedSize
         }
         let extraRight = (!expanded && claudeMode != .inactive) ? NotchPanel.claudeExtraWidth : 0
-        let target = NotchPanel.frame(for: size, extraRight: extraRight, in: screenFrame)
+        // only extend left when capslock is briefly shown AND music isn't present (music provides existing left space)
+        let extraLeft: CGFloat = (!expanded && capsLockVisible && musicMode == .hidden) ? NotchPanel.capsLockExtraLeft : 0
+        let target = NotchPanel.frame(for: size, extraRight: extraRight, extraLeft: extraLeft, in: screenFrame)
         NSAnimationContext.runAnimationGroup { ctx in
             ctx.duration = 0.28
             ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
